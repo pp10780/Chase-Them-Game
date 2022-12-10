@@ -65,6 +65,7 @@ int main(){
 
 	char buff[100];
 	int nbytes;
+    int key = -1;
 
 
 	printf("My pid is %d (no other proces has the same pid :)\n", getpid());
@@ -87,6 +88,7 @@ int main(){
 		exit(-1);
 	}
 
+
 	printf("Socket created \nReady to send\nReady to recieve\n");
 
 	initscr();		    	/* Start curses mode 		*/
@@ -107,6 +109,8 @@ int main(){
 
     message msg;
 	client_t client;
+    client_t personal_info;
+    field_status_t field;
 
 	struct sockaddr_un server_addr;
 	server_addr.sun_family = AF_UNIX;
@@ -114,31 +118,52 @@ int main(){
 
     // Connect
     msg.type = Connect;
-	msg.id = 'C';
+	msg.id = 'A';
     nbytes = sendto(sock_fd,
 	                    &msg, sizeof(msg), 0,
 	                    (const struct sockaddr *) &server_addr, sizeof(server_addr));
 
 	nbytes = recv(sock_fd, &client, sizeof(client), 0);
 
-	draw_player(my_win, &client, 1);
+	personal_info = client;
+
+    draw_player(my_win, &personal_info, 1);
 
 
+	while(1){
+        key = wgetch(my_win);
+        if (key == KEY_LEFT || key == KEY_RIGHT || key == KEY_UP || key == KEY_DOWN){
+            msg.type = Ball_movement;
+            msg.key = key;
+            msg.id = personal_info.id;
+            msg.idx = personal_info.idx;
 
-	while(1)
-	{
+            nbytes = sendto(sock_fd,
+	                    &msg, sizeof(msg), 0,
+	                    (const struct sockaddr *) &server_addr, sizeof(server_addr));
+        }
+		
+		nbytes = recv(sock_fd, &field, sizeof(field), 0);
+        for(int i = 0; i < 10; i++)
+        {
+            if(field.user[i].id != '-'){
+                 if(field.user[i].id == personal_info.id)
+                 {
+                    draw_player(my_win, &personal_info, 0);
+                    personal_info.pos[0] = field.user[i].pos[0];
+                    personal_info.pos[1] = field.user[i].pos[1];
+                    draw_player(my_win, &personal_info, 1);
 
+                    //personal_info = field.user[i];
+                 }
+                 else
+                    draw_player(my_win, &field.user[i], 1);
+            }
+                
+           
+        }
 	}
-	// while(1){
-	// 	nbytes = sendto(sock_fd,
-	//                     linha, strlen(linha)+1, 0,
-	//                     (const struct sockaddr *) &server_addr, sizeof(server_addr));
-	// 	printf("\nsent %d %s\n\n", nbytes, buff);
-
-	// 	nbytes = recv(sock_fd, recv_message, 100, 0);
-	// 	printf("received %d bytes :\n", nbytes);
-	// }
-	//close(sock_fd);
+	close(sock_fd);
 	exit(0);
 }
 

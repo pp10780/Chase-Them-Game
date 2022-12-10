@@ -7,6 +7,7 @@
 #include <unistd.h>
 #include <ctype.h>
 #include <time.h>
+#include <ncurses.h>
 
 #include "chase.h"
   
@@ -57,6 +58,40 @@ void generate_valid_pos(field_t* field, int* pos){
 		if (field[pos[0]*WINDOW_SIZE + pos[1]].status == -1) val_pos = 1;
 	} while(!val_pos);
 
+}
+
+void get_new_pos(int pos[2], int key)
+{
+	if (key == KEY_UP){
+        if (pos[1] != 1){
+            pos[1]--;
+        }
+    }
+    if (key == KEY_DOWN){
+        if (pos[1] != WINDOW_SIZE-2){
+            pos[1]++;
+        }
+    }
+    
+
+    if (key == KEY_LEFT){
+        if (pos[0] != 1){
+            pos[0]--;
+        }
+    }
+    if (key == KEY_RIGHT)
+        if (pos[0] != WINDOW_SIZE-2){
+            pos[0]++;
+    }
+}
+
+void update_pos(field_t* field, client_t* client, int* new_pos)
+{
+	if (field[new_pos[0]*WINDOW_SIZE + new_pos[1]].status == -1) 
+	{
+		client->pos[0] = new_pos[0];
+		client->pos[1] = new_pos[1];
+	}	
 }
 
 void init_prize(prize_t* prize)
@@ -114,6 +149,7 @@ int main(){
 	message msg;
 	int nbytes;
 	int idx;
+	int new_pos[2];
 	
 	init_user(field_status.user);
 	init_field(field);
@@ -153,15 +189,22 @@ int main(){
 		                  ( struct sockaddr *)&client_addr, &client_addr_size);
 
 		if(msg.type == Connect){
-			printf("OOGA BOOGA IN DA MOOGA");
+			printf("OOGA BOOGA IN DA MOOGA\n");
 			idx = create_user(field_status.user, field, msg);
 
 			nbytes = sendto(sock_fd,
-						&field_status.user[idx], sizeof(field_status.user), 0,
+						&field_status.user[idx], sizeof(field_status.user[idx]), 0,
 						(const struct sockaddr *) &client_addr, client_addr_size);
 		}
 		else if(msg.type == Ball_movement)
 		{
+			printf("Ball Movement\n");
+			get_new_pos(new_pos, msg.key);
+			update_pos(field, &field_status.user[msg.idx], new_pos);
+			
+			nbytes = sendto(sock_fd,
+						&field_status, sizeof(field_status), 0,
+						(const struct sockaddr *) &client_addr, client_addr_size);
 
 		}
 		else if(msg.type == Disconnect)
