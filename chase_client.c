@@ -37,6 +37,20 @@ void draw_player(WINDOW *win, client_t * player, int delete){
     wrefresh(win);
 }
 
+void draw_prize(WINDOW *win, prize_t * prize, int delete){
+    int ch;
+    if(delete){
+        ch = prize->value;
+    }else{
+        ch = ' ';
+    }
+    int p_x = prize->pos[0];
+    int p_y = prize->pos[1];
+    wmove(win, p_y, p_x);
+    waddch(win,ch);
+    wrefresh(win);
+}
+
 void moove_player (player_position_t * player, int direction){
     if (direction == KEY_UP){
         if (player->y  != 1){
@@ -115,6 +129,7 @@ int main(){
 	client_t client;
     client_t personal_info;
     field_status_t field;
+    field_status_t prev_field;
 
 	struct sockaddr_un server_addr;
 	server_addr.sun_family = AF_UNIX;
@@ -130,9 +145,11 @@ int main(){
 	nbytes = recv(sock_fd, &client, sizeof(client), 0);
 
 	personal_info = client;
-
+    
     draw_player(my_win, &personal_info, 1);
 
+    //POTENCIAL FONTE DE BUGS
+    prev_field.user[personal_info.idx] = personal_info;
 
 	while(1){
         key = wgetch(my_win);
@@ -143,31 +160,34 @@ int main(){
             msg.idx = personal_info.idx;
 
             nbytes = sendto(sock_fd,
-	                    &msg, sizeof(msg) + 100, 0,
+	                    &msg, sizeof(msg), 0,
 	                    (const struct sockaddr *) &server_addr, sizeof(server_addr));
         }
 		
 		nbytes = recv(sock_fd, &field, sizeof(field), 0);
+        
+        
         for(int i = 0; i < 10; i++)
         {
-            if(field.user[i].id != '-'){
-                 if(field.user[i].id == personal_info.id)
-                 {
-                    draw_player(my_win, &personal_info, 0);
-                    personal_info.pos[0] = field.user[i].pos[0];
-                    personal_info.pos[1] = field.user[i].pos[1];
-                    draw_player(my_win, &personal_info, 1);
-
-                    //personal_info = field.user[i];
-                 }
-                 else
-                    draw_player(my_win, &field.user[i], 1);
+            if(field.user[i].id != '-'){      
+                draw_player(my_win, &prev_field.user[i], 0);
+                draw_player(my_win, &field.user[i], 1);        
             }
-                
-           
         }
+
+        for(int i = 0; i < 10; i++)
+        {
+            if(field.prize[i].value != -1){      
+                draw_prize(my_win, &prev_field.prize[i], 0);
+                draw_prize(my_win, &field.prize[i], 1);        
+            }
+        }
+        prev_field = field;
+        
 	}
-	close(sock_fd);
+
+	
+    close(sock_fd);
 	exit(0);
 }
 
