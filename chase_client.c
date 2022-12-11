@@ -91,6 +91,10 @@ int main(){
 
 	printf("Socket created \nReady to send\nReady to recieve\n");
 
+    char buffer[100];
+    printf("Choose a letter: ");
+    fgets(buffer, 2, stdin);
+
 	initscr();		    	/* Start curses mode 		*/
 	cbreak();				/* Line buffering disabled	*/
     keypad(stdscr, TRUE);   /* We get F1, F2 etc..		*/
@@ -118,7 +122,7 @@ int main(){
 
     // Connect
     msg.type = Connect;
-	msg.id = 'A';
+	msg.id = buffer[0];
     nbytes = sendto(sock_fd,
 	                    &msg, sizeof(msg), 0,
 	                    (const struct sockaddr *) &server_addr, sizeof(server_addr));
@@ -139,7 +143,7 @@ int main(){
             msg.idx = personal_info.idx;
 
             nbytes = sendto(sock_fd,
-	                    &msg, sizeof(msg), 0,
+	                    &msg, sizeof(msg) + 100, 0,
 	                    (const struct sockaddr *) &server_addr, sizeof(server_addr));
         }
 		

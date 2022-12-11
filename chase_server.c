@@ -52,37 +52,42 @@ void generate_valid_pos(field_t* field, int* pos){
 	srand(time(0));
 
 	do{
-		pos[0] = 1 + rand() % 19;
-		pos[1] = 1 + rand() % 19;
+		
+		pos[0] = 1 + rand() % 18;
+		pos[1] = 1 + rand() % 18;
 
 		if (field[pos[0]*WINDOW_SIZE + pos[1]].status == -1) val_pos = 1;
 	} while(!val_pos);
 
 }
 
-void get_new_pos(int pos[2], int key)
+void get_new_pos(int* pos, int key)
 {
 	if (key == KEY_UP){
         if (pos[1] != 1){
             pos[1]--;
         }
+		printf("KEY_UP\n");
     }
-    if (key == KEY_DOWN){
+    else if (key == KEY_DOWN){
         if (pos[1] != WINDOW_SIZE-2){
             pos[1]++;
         }
-    }
-    
-
-    if (key == KEY_LEFT){
+		printf("KEY_DOWN\n");
+	}
+    else if (key == KEY_LEFT){
         if (pos[0] != 1){
             pos[0]--;
         }
+		printf("KEY_LEFT\n");
     }
-    if (key == KEY_RIGHT)
+    else if (key == KEY_RIGHT){
         if (pos[0] != WINDOW_SIZE-2){
             pos[0]++;
+		}
+		printf("KEY_RIGHT\n");
     }
+	
 }
 
 void update_pos(field_t* field, client_t* client, int* new_pos)
@@ -149,7 +154,9 @@ int main(){
 	message msg;
 	int nbytes;
 	int idx;
-	int new_pos[2];
+	int* new_pos;
+
+	new_pos = (int *)malloc(2*sizeof(int));
 	
 	init_user(field_status.user);
 	init_field(field);
@@ -185,7 +192,7 @@ int main(){
 	socklen_t client_addr_size = sizeof(struct sockaddr_un);
 	while(1){
 		printf("Waiting...\n");
-		nbytes = recvfrom(sock_fd, &msg, sizeof(message), 0,
+		nbytes = recvfrom(sock_fd, &msg, sizeof(msg), 0,
 		                  ( struct sockaddr *)&client_addr, &client_addr_size);
 
 		if(msg.type == Connect){
@@ -198,9 +205,13 @@ int main(){
 		}
 		else if(msg.type == Ball_movement)
 		{
+			new_pos[0] = field_status.user[msg.idx].pos[0];
+			new_pos[1] = field_status.user[msg.idx].pos[1];
 			printf("Ball Movement\n");
 			get_new_pos(new_pos, msg.key);
+			printf("%d %d \n", field_status.user[msg.idx].pos[0], field_status.user[msg.idx].pos[1]);
 			update_pos(field, &field_status.user[msg.idx], new_pos);
+			printf("%d %d \n", field_status.user[msg.idx].pos[0], field_status.user[msg.idx].pos[1]);
 			
 			nbytes = sendto(sock_fd,
 						&field_status, sizeof(field_status), 0,
