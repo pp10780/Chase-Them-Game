@@ -89,16 +89,46 @@ void get_new_pos(int* pos, int key)
 	
 }
 
-void update_pos(field_t* field, client_t* user, int* new_pos, int idx)
+void update_pos(field_t* field, field_status_t* field_status, int* new_pos, int idx)
 {
 	if (field[new_pos[0]*WINDOW_SIZE + new_pos[1]].status == -1) 
+	{	
+		field[field_status->user[idx].pos[0]*WINDOW_SIZE + field_status->user[idx].pos[1]].status = -1;
+		field_status->user[idx].pos[0] = new_pos[0];
+		field_status->user[idx].pos[1] = new_pos[1];
+		field[field_status->user[idx].pos[0]*WINDOW_SIZE + field_status->user[idx].pos[1]].status = 0;
+		field[field_status->user[idx].pos[0]*WINDOW_SIZE + field_status->user[idx].pos[1]].idx = idx;
+	}
+	else if(field[new_pos[0]*WINDOW_SIZE + new_pos[1]].status == 0)
 	{
-		field[user->pos[0]*WINDOW_SIZE + user->pos[1]].status = -1;
-		user->pos[0] = new_pos[0];
-		user->pos[1] = new_pos[1];
-		field[user->pos[0]*WINDOW_SIZE + user->pos[1]].status = 0;
-		field[user->pos[0]*WINDOW_SIZE + user->pos[1]].idx = idx;
-	}	
+		if (field_status->user[idx].hp < 10){
+			field_status->user[idx].hp++;
+		}
+		field_status->user[field[new_pos[0]*WINDOW_SIZE + new_pos[1]].idx].hp--;
+		printf("HP LOSS: %d", field_status->user[field[new_pos[0]*WINDOW_SIZE + new_pos[1]].idx].hp);
+		
+		if (field_status->user[field[new_pos[0]*WINDOW_SIZE + new_pos[1]].idx].hp == 0){
+			field[new_pos[0]*WINDOW_SIZE + new_pos[1]].status = -1;
+		}
+	}
+	else if(field[new_pos[0]*WINDOW_SIZE + new_pos[1]].status == 2)
+	{
+		field_status->user[idx].hp += field[new_pos[0] * WINDOW_SIZE + new_pos[1]].prize;
+		if (field_status->user[idx].hp > 10){
+			field_status->user[idx].hp = 10;
+		}
+
+		printf("HP GAINED: %d", field_status->user[idx].hp);
+		
+		field_status->prize[field[new_pos[0]*WINDOW_SIZE + new_pos[1]].idx].value = -1;
+
+		field[field_status->user[idx].pos[0]*WINDOW_SIZE + field_status->user[idx].pos[1]].status = -1;
+		field_status->user[idx].pos[0] = new_pos[0];
+		field_status->user[idx].pos[1] = new_pos[1];
+		field[field_status->user[idx].pos[0]*WINDOW_SIZE + field_status->user[idx].pos[1]].status = 0;
+		field[field_status->user[idx].pos[0]*WINDOW_SIZE + field_status->user[idx].pos[1]].idx = idx;
+		
+	}
 }
 
 void init_prize(prize_t* prize)
@@ -117,7 +147,7 @@ void create_prize(field_t* field, prize_t* prize)
 		if(prize[i].value == -1)
 		{
 			generate_valid_pos(field, prize[i].pos);
-			prize[i].value = '0' + 1 + random()%5;
+			prize[i].value = 1 + random()%5;
 			field[prize[i].pos[0]*WINDOW_SIZE + prize[i].pos[1]].status = 2;
 			field[prize[i].pos[0]*WINDOW_SIZE + prize[i].pos[1]].idx = i;
 			break;
@@ -131,7 +161,7 @@ void init_field(field_t* field){
 	}
 }
 
-int create_user(client_t* user, field_t* field, message msg){
+int create_user(client_t* user, field_t* field, message_c2s msg){
 	int i;
 	for(i = 0; i < 10; i++){
 		if (user[i].id == '-'){
@@ -148,6 +178,7 @@ int create_user(client_t* user, field_t* field, message msg){
 
 }
 
+
 void clear_user(client_t* user, field_t* field)
 {
 	field[user->pos[0]*WINDOW_SIZE + user->pos[1]].status = -1;
@@ -161,7 +192,8 @@ int main(){
 	field_status_t field_status;
 	field_t field[WINDOW_SIZE*WINDOW_SIZE];
 	int sock_fd;
-	message msg;
+	message_c2s msg_rcv;
+	message_s2c msg_send;
 	int nbytes;
 	int idx;
 	int* new_pos;
@@ -202,38 +234,44 @@ int main(){
 	socklen_t client_addr_size = sizeof(struct sockaddr_un);
 	while(1){
 		printf("Waiting...\n");
-		nbytes = recvfrom(sock_fd, &msg, sizeof(msg), 0,
+		nbytes = recvfrom(sock_fd, &msg_rcv, sizeof(msg_rcv), 0,
 		                  ( struct sockaddr *)&client_addr, &client_addr_size);
 
-		if(msg.type == Connect){
+		if(msg_rcv.type == Connect){
 			printf("OOGA BOOGA IN DA MOOGA\n");
-			idx = create_user(field_status.user, field, msg);
+			idx = create_user(field_status.user, field, msg_rcv);
 
 			nbytes = sendto(sock_fd,
 						&field_status.user[idx], sizeof(field_status.user[idx]), 0,
 						(const struct sockaddr *) &client_addr, client_addr_size);
 		}
-		else if(msg.type == Ball_movement)
+		else if(msg_rcv.type == Ball_movement && field_status.user[msg_rcv.idx].hp <= 0)
 		{
-			new_pos[0] = field_status.user[msg.idx].pos[0];
-			new_pos[1] = field_status.user[msg.idx].pos[1];
-			printf("Ball Movement\n");
-			get_new_pos(new_pos, msg.key);
-			printf("%d %d \n", field_status.user[msg.idx].pos[0], field_status.user[msg.idx].pos[1]);
-			update_pos(field, &field_status.user[msg.idx], new_pos, msg.idx);
-			printf("%d %d \n", field_status.user[msg.idx].pos[0], field_status.user[msg.idx].pos[1]);
-			
+			printf("Health_0\n");
+			msg_send.type = Health_0;
 			nbytes = sendto(sock_fd,
-						&field_status, sizeof(field_status), 0,
+						&msg_send, sizeof(msg_send), 0,
+						(const struct sockaddr *) &client_addr, client_addr_size);
+			clear_user(&field_status.user[msg_rcv.idx], field);
+		}
+		else if(msg_rcv.type == Ball_movement)
+		{
+			new_pos[0] = field_status.user[msg_rcv.idx].pos[0];
+			new_pos[1] = field_status.user[msg_rcv.idx].pos[1];
+			printf("Ball Movement\n");
+			get_new_pos(new_pos, msg_rcv.key);
+			update_pos(field, &field_status, new_pos, msg_rcv.idx);
+			msg_send.type = Field_status;
+			msg_send.field_status = field_status;
+			nbytes = sendto(sock_fd,
+						&msg_send, sizeof(msg_send), 0,
 						(const struct sockaddr *) &client_addr, client_addr_size);
 
 		}
-		else if(msg.type == Disconnect)
+		else if(msg_rcv.type == Disconnect)
 		{
 			printf("Disconnect\n");
-			printf("BEF STATUS: %c\n", field_status.user[msg.idx].id);
-			clear_user(&field_status.user[msg.idx], field);
-			printf("AFT STATUS: %c\n", field_status.user[msg.idx].id);
+			clear_user(&field_status.user[msg_rcv.idx], field);
 		}
 		else
 		{

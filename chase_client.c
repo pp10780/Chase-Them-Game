@@ -51,30 +51,6 @@ void draw_prize(WINDOW *win, prize_t * prize, int delete){
     wrefresh(win);
 }
 
-void moove_player (player_position_t * player, int direction){
-    if (direction == KEY_UP){
-        if (player->y  != 1){
-            player->y --;
-        }
-    }
-    if (direction == KEY_DOWN){
-        if (player->y  != WINDOW_SIZE-2){
-            player->y ++;
-        }
-    }
-    
-
-    if (direction == KEY_LEFT){
-        if (player->x  != 1){
-            player->x --;
-        }
-    }
-    if (direction == KEY_RIGHT)
-        if (player->x  != WINDOW_SIZE-2){
-            player->x ++;
-    }
-}
-
 int main(){
 
 	char buff[100];
@@ -125,21 +101,22 @@ int main(){
 	wrefresh(message_win);
 
 
-    message msg;
+    message_c2s msg_send;
+    message_s2c msg_rcv;
 	client_t client;
     client_t personal_info;
-    field_status_t field;
-    field_status_t prev_field;
+    field_status_t field_status;
+    field_status_t prev_field_status;
 
 	struct sockaddr_un server_addr;
 	server_addr.sun_family = AF_UNIX;
 	strcpy(server_addr.sun_path, SOCK_ADDRESS);
 
     // Connect
-    msg.type = Connect;
-	msg.id = buffer[0];
+    msg_send.type = Connect;
+	msg_send.id = buffer[0];
     nbytes = sendto(sock_fd,
-	                    &msg, sizeof(msg), 0,
+	                    &msg_send, sizeof(msg_send), 0,
 	                    (const struct sockaddr *) &server_addr, sizeof(server_addr));
 
 	nbytes = recv(sock_fd, &client, sizeof(client), 0);
@@ -149,67 +126,93 @@ int main(){
     draw_player(my_win, &personal_info, 1);
 
     //POTENCIAL FONTE DE BUGS
-    prev_field.user[personal_info.idx] = personal_info;
+    prev_field_status.user[personal_info.idx] = personal_info;
 
 	while(1){
         key = wgetch(my_win);
         if (key == KEY_LEFT || key == KEY_RIGHT || key == KEY_UP || key == KEY_DOWN){
-            msg.type = Ball_movement;
-            msg.key = key;
-            msg.id = personal_info.id;
-            msg.idx = personal_info.idx;
+            msg_send.type = Ball_movement;
+            msg_send.key = key;
+            msg_send.id = personal_info.id;
+            msg_send.idx = personal_info.idx;
 
             nbytes = sendto(sock_fd,
-	                    &msg, sizeof(msg), 0,
+	                    &msg_send, sizeof(msg_send), 0,
 	                    (const struct sockaddr *) &server_addr, sizeof(server_addr));
         }
         else if(key == 'q')
         {
-            msg.type = Disconnect;
-            msg.idx = personal_info.idx;
+            msg_send.type = Disconnect;
+            msg_send.idx = personal_info.idx;
             nbytes = sendto(sock_fd,
-	                    &msg, sizeof(msg), 0,
+	                    &msg_send, sizeof(msg_send), 0,
 	                    (const struct sockaddr *) &server_addr, sizeof(server_addr));
             break;
         }
 		
-		nbytes = recv(sock_fd, &field, sizeof(field), 0);
+		nbytes = recv(sock_fd, &msg_rcv, sizeof(msg_rcv), 0);
         
+        if(msg_rcv.type == Field_status){
         
-        for(int i = 0; i < 10; i++)
-        {
-            if(prev_field.user[i].id != '-'){      
-                draw_player(my_win, &prev_field.user[i], 0);        
+            field_status = msg_rcv.field_status;
+            for(int i = 0; i < 10; i++)
+            {
+                if(prev_field_status.user[i].id != '-' && prev_field_status.user[i].hp > 0){      
+                    draw_player(my_win, &prev_field_status.user[i], 0);        
+                }
+                if(field_status.user[i].id != '-' && field_status.user[i].hp > 0){      
+                    draw_player(my_win, &field_status.user[i], 1);        
+                }
+                //Se der bug é porque é como o de cima
+                if(prev_field_status.prize[i].value != -1){      
+                    prev_field_status.prize[i].value += '0';
+                    field_status.prize[i].value += '0';
+                    draw_prize(my_win, &prev_field_status.prize[i], 0);
+                    draw_prize(my_win, &field_status.prize[i], 1);        
+                }
             }
-            if(field.user[i].id != '-'){      
-                draw_player(my_win, &field.user[i], 1);        
-            }
-            //Se der bug é porque é como o de cima
-            if(prev_field.prize[i].value != -1){      
-                draw_prize(my_win, &prev_field.prize[i], 0);
-                draw_prize(my_win, &field.prize[i], 1);        
-            }
+            prev_field_status = field_status;
         }
-        prev_field = field;
-        
+
+        else if(msg_rcv.type == Health_0){
+            
+            //touchwin(message_win);
+    mvwprintw(message_win, 5,10,
+         "\t __  __                            \n"
+         "\t\\ \\/ /  / __ \\  / / / /           \n"
+         "\t \\  /  / / / / / / / /            \n"
+         "\t / /  / /_/ / / /_/ /             \n"
+         "\t/_/   \\____/  \\____/              \n"
+         "\t                                 \n"
+         "\t                  ____     ____    ______    ____ \n"
+         "\t                 / __ \\   /  _/   / ____/   / __ \\ \n"
+         "\t                / / / /   / /    / __/     / / / / \n"
+         "\t               / /_/ /  _/ /    / /___    / /_/ /  \n"
+         "\t              /_____/  /___/   /_____/   /_____/   \n"
+         "\t                                                  \n");
+         wrefresh(message_win);	
+            sleep(2);
+            break;
+        }
 	}
 
     //endwin();
-    touchwin(message_win);
+    //touchwin(message_win);
     mvwprintw(message_win, 5,10,
-" ______     ______     __    __     ______\n"
-"/\\  ___\\   /\\  __ \\   /\\ \"-./  \\   /\\  ___\\\n"
-"\\ \\ \\__ \\  \\ \\  __ \\  \\ \\ \\-./\\ \\  \\ \\  __\\\n"
-" \\ \\_____\\  \\ \\_\\ \\_\\  \\ \\_\\ \\ \\_\\  \\ \\_____\\\n"
-"  \\/_____/   \\/_/\\/_/   \\/_/  \\/_/   \\/_____/\n"
-"                                              \n"
-"             ______     __   __   ______     ______\n"
-"            /\\  __ \\   /\\ \\ / /  /\\  ___\\   /\\  == \\ \n"
-"            \\ \\ \\/\\ \\  \\ \\ \\/   \\ \\  __\\   \\ \\  __<\n"
-"             \\ \\_____\\  \\ \\__|    \\ \\_____\\  \\ \\_\\ \\_\\\n"
-"              \\/_____/   \\/_/      \\/_____/   \\/_/ /_/\n");
+         " ______    ___     __  ___    ______                   \n"
+         "\t  / ____/   /   |   /  |/  /   / ____/                   \n"
+         "\t / / __    / /| |  / /|_/ /   / __/                      \n"
+         "\t/ /_/ /   / ___ | / /  / /   / /___                      \n"
+         "\t\\____/   /_/  |_|/_/  /_/   /_____/                      \n"
+         "\t                                                         \n"
+         "\t                        ____  _    __    ______    ____  \n"
+         "\t                       / __ \\| |  / /   / ____/   / __ \\ \n"
+         "\t                      / / / /| | / /   / __/     / /_/ / \n"
+         "\t                     / /_/ / | |/ /   / /___    / _, _/  \n"
+         "\t                     \\____/  |___/   /_____/   /_/ |_|   \n"
+         "\t                                                        \n");
     wrefresh(message_win);	
-    sleep(1);
+    sleep(2);
     endwin();
 
 	

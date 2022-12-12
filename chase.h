@@ -17,7 +17,7 @@ typedef struct field_t
     //          1 - bot; 
     //          2 - prize
     int status;
-    // player/bot position on the struct
+    // player/bot/prize position on the struct
 	int idx;
     // prize: 1 - 5
 	int prize;
@@ -44,11 +44,16 @@ typedef struct field_status_t
     prize_t prize[10];
 }field_status_t;
 
-typedef struct message_t
+typedef struct message_s2c
+{
+    int type;
+    field_status_t field_status;
+}message_s2c;
+
+typedef struct message_c2s
 {
     int type;
     int idx;
     char id;
     int key;
-
-} message;
+} message_c2s;
