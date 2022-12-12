@@ -148,6 +148,12 @@ int create_user(client_t* user, field_t* field, message msg){
 
 }
 
+void clear_user(client_t* user, field_t* field)
+{
+	field[user->pos[0]*WINDOW_SIZE + user->pos[1]].status = -1;
+	user->id = '-';
+}
+
 
 
 int main(){
@@ -224,7 +230,10 @@ int main(){
 		}
 		else if(msg.type == Disconnect)
 		{
-
+			printf("Disconnect\n");
+			printf("BEF STATUS: %c\n", field_status.user[msg.idx].id);
+			clear_user(&field_status.user[msg.idx], field);
+			printf("AFT STATUS: %c\n", field_status.user[msg.idx].id);
 		}
 		else
 		{

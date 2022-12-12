@@ -120,9 +120,9 @@ int main(){
 	wrefresh(my_win);
     keypad(my_win, true);
     /* creates a window and draws a border */
-    //message_win = newwin(5, WINDOW_SIZE, WINDOW_SIZE, 0);
-    //box(message_win, 0 , 0);	
-	//wrefresh(message_win);
+    message_win = newwin(20, 100, WINDOW_SIZE, 0);
+    box(message_win, 0 , 0);	
+	wrefresh(message_win);
 
 
     message msg;
@@ -163,21 +163,29 @@ int main(){
 	                    &msg, sizeof(msg), 0,
 	                    (const struct sockaddr *) &server_addr, sizeof(server_addr));
         }
+        else if(key == 'q')
+        {
+            msg.type = Disconnect;
+            msg.idx = personal_info.idx;
+            nbytes = sendto(sock_fd,
+	                    &msg, sizeof(msg), 0,
+	                    (const struct sockaddr *) &server_addr, sizeof(server_addr));
+            break;
+        }
 		
 		nbytes = recv(sock_fd, &field, sizeof(field), 0);
         
         
         for(int i = 0; i < 10; i++)
         {
+            if(prev_field.user[i].id != '-'){      
+                draw_player(my_win, &prev_field.user[i], 0);        
+            }
             if(field.user[i].id != '-'){      
-                draw_player(my_win, &prev_field.user[i], 0);
                 draw_player(my_win, &field.user[i], 1);        
             }
-        }
-
-        for(int i = 0; i < 10; i++)
-        {
-            if(field.prize[i].value != -1){      
+            //Se der bug é porque é como o de cima
+            if(prev_field.prize[i].value != -1){      
                 draw_prize(my_win, &prev_field.prize[i], 0);
                 draw_prize(my_win, &field.prize[i], 1);        
             }
@@ -185,6 +193,24 @@ int main(){
         prev_field = field;
         
 	}
+
+    //endwin();
+    touchwin(message_win);
+    mvwprintw(message_win, 5,10,
+" ______     ______     __    __     ______\n"
+"/\\  ___\\   /\\  __ \\   /\\ \"-./  \\   /\\  ___\\\n"
+"\\ \\ \\__ \\  \\ \\  __ \\  \\ \\ \\-./\\ \\  \\ \\  __\\\n"
+" \\ \\_____\\  \\ \\_\\ \\_\\  \\ \\_\\ \\ \\_\\  \\ \\_____\\\n"
+"  \\/_____/   \\/_/\\/_/   \\/_/  \\/_/   \\/_____/\n"
+"                                              \n"
+"             ______     __   __   ______     ______\n"
+"            /\\  __ \\   /\\ \\ / /  /\\  ___\\   /\\  == \\ \n"
+"            \\ \\ \\/\\ \\  \\ \\ \\/   \\ \\  __\\   \\ \\  __<\n"
+"             \\ \\_____\\  \\ \\__|    \\ \\_____\\  \\ \\_\\ \\_\\\n"
+"              \\/_____/   \\/_/      \\/_____/   \\/_/ /_/\n");
+    wrefresh(message_win);	
+    sleep(1);
+    endwin();
 
 	
     close(sock_fd);
