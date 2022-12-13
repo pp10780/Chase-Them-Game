@@ -151,7 +151,6 @@ int main(){
         }
 		
 		nbytes = recv(sock_fd, &msg_rcv, sizeof(msg_rcv), 0);
-        
         if(msg_rcv.type == Field_status){
         
             field_status = msg_rcv.field_status;
@@ -161,17 +160,28 @@ int main(){
                     draw_player(my_win, &prev_field_status.user[i], 0);        
                 }
                 if(field_status.user[i].id != '-' && field_status.user[i].hp > 0){      
-                    draw_player(my_win, &field_status.user[i], 1);        
+                    draw_player(my_win, &field_status.user[i], 1); 
+                    mvwprintw(message_win, i+1,1,"Player: %c : HP: %d\n", field_status.user[i].id, field_status.user[i].hp);
+                    wrefresh(message_win);       
+                }
+                if(field_status.user[i].id != '-' && field_status.user[i].hp == 0)
+                {
+                    mvwprintw(message_win, i+1,1,"                     ");
+                    wrefresh(message_win);
                 }
                 //Se der bug é porque é como o de cima
                 if(field_status.prize[i].value != -1){      
                     draw_prize(my_win, &prev_field_status.prize[i], 0);
                     draw_prize(my_win, &field_status.prize[i], 1);        
                 }
+                box(my_win, 0 , 0);
+                wrefresh(my_win);
+                
             }
+
+
             prev_field_status = field_status;
         }
-
         else if(msg_rcv.type == Health_0){
             
             //touchwin(message_win);
@@ -189,7 +199,7 @@ int main(){
          "\t              /_____/  /___/   /_____/   /_____/   \n"
          "\t                                                  \n");
          wrefresh(message_win);	
-            sleep(3);
+            sleep(0.5);
             break;
         }
 	}
@@ -210,7 +220,7 @@ int main(){
          "\t                     \\____/  |___/   /_____/   /_/ |_|   \n"
          "\t                                                        \n");
     wrefresh(message_win);	
-    sleep(5);
+    sleep(0.5);
     endwin();
 
 	

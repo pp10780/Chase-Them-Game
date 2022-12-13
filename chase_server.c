@@ -262,7 +262,8 @@ int main(){
 			new_pos[1] = field_status.user[msg_rcv.idx].pos[1];
 			printf("Ball Movement\n");
 			get_new_pos(new_pos, msg_rcv.key);
-			update_pos(field, &field_status, new_pos, msg_rcv.idx);
+			if(new_pos[0] != field_status.user[msg_rcv.idx].pos[0] || new_pos[1] != field_status.user[msg_rcv.idx].pos[1])
+				update_pos(field, &field_status, new_pos, msg_rcv.idx);
 			msg_send.type = Field_status;
 			msg_send.field_status = field_status;
 			nbytes = sendto(sock_fd,
