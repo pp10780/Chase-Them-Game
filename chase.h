@@ -2,12 +2,13 @@
 #define SOCK_ADDRESS "/tmp/sock_16"
 
 #define Connect 1000
+#define Connect_bots 1500
 #define Ball_information 2000
 #define Ball_movement 3000
 #define Field_status 4000
 #define Health_0 5000
 #define New_Prize 6000
-#define Bots 7000
+#define Bot_movement 7000
 #define Disconnect 8000
 
 
@@ -29,7 +30,6 @@ typedef struct prize_t
     int pos[2];
 } prize_t;
 
-
 typedef struct client_t
 {
 	char id;
@@ -42,6 +42,7 @@ typedef struct field_status_t
 {
     client_t user[10];
     prize_t prize[10];
+    client_t bot[10];
 }field_status_t;
 
 
@@ -54,8 +55,9 @@ typedef struct message_s2c
 
 typedef struct message_c2s
 {
+    int n_bots;
     int type;
     int idx;
     char id;
-    int key;
+    int key[10];
 } message_c2s;

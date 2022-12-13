@@ -37,13 +37,14 @@
 // Health_0
 // Disconnect
 
-void init_user(client_t* user){
+void init_client(client_t* client){
 
 	for (int i = 0; i < 10; i++){
-		user[i].id = '-';
-		user[i].pos[0] = -1;
-		user[i].pos[1] = -1;
-		user[i].hp = -1;
+		client[i].id = '-';
+		client[i].pos[0] = -1;
+		client[i].pos[1] = -1;
+		client[i].hp = -1;
+		
 	}
 }
 
@@ -89,7 +90,7 @@ void get_new_pos(int* pos, int key)
 	
 }
 
-void update_pos(field_t* field, field_status_t* field_status, int* new_pos, int idx)
+void update_user_pos(field_t* field, field_status_t* field_status, int* new_pos, int idx)
 {
 	if (field[new_pos[0]*WINDOW_SIZE + new_pos[1]].status == -1) 
 	{	
@@ -129,7 +130,27 @@ void update_pos(field_t* field, field_status_t* field_status, int* new_pos, int 
 		field_status->user[idx].pos[1] = new_pos[1];
 		field[field_status->user[idx].pos[0]*WINDOW_SIZE + field_status->user[idx].pos[1]].status = 0;
 		field[field_status->user[idx].pos[0]*WINDOW_SIZE + field_status->user[idx].pos[1]].idx = idx;
+	}	
+}
+
+void update_bot_pos(field_t* field, field_status_t* field_status, int* new_pos, int idx)
+{
+	if(field[new_pos[0]*WINDOW_SIZE + new_pos[1]].status == -1) 
+	{	
+		field[field_status->bot[idx].pos[0]*WINDOW_SIZE + field_status->bot[idx].pos[1]].status = -1;
+		field_status->bot[idx].pos[0] = new_pos[0];
+		field_status->bot[idx].pos[1] = new_pos[1];
+		field[field_status->bot[idx].pos[0]*WINDOW_SIZE + field_status->bot[idx].pos[1]].status = 1;
+		field[field_status->bot[idx].pos[0]*WINDOW_SIZE + field_status->bot[idx].pos[1]].idx = idx;
+	}
+	else if(field[new_pos[0]*WINDOW_SIZE + new_pos[1]].status == 0)
+	{
+		field_status->user[field[new_pos[0]*WINDOW_SIZE + new_pos[1]].idx].hp--;
+		printf("USER: %c HP LOSS: %d\n", field_status->user[field[new_pos[0]*WINDOW_SIZE + new_pos[1]].idx].id, field_status->user[field[new_pos[0]*WINDOW_SIZE + new_pos[1]].idx].hp);
 		
+		if (field_status->user[field[new_pos[0]*WINDOW_SIZE + new_pos[1]].idx].hp == 0){
+			field[new_pos[0]*WINDOW_SIZE + new_pos[1]].status = -1;
+		}
 	}
 }
 
@@ -180,6 +201,16 @@ int create_user(client_t* user, field_t* field, message_c2s msg){
 
 }
 
+void create_bots(client_t* bot, field_t* field, int n_bots){
+	for (int i = 0; i < n_bots; i++){
+		bot[i].id = '*';
+		bot[i].idx = i;
+		generate_valid_pos(field, bot[i].pos);
+		field[bot[i].pos[0]*WINDOW_SIZE + bot[i].pos[1]].status = 1;
+		field[bot[i].pos[0]*WINDOW_SIZE + bot[i].pos[1]].idx = i;
+	}
+	
+}
 
 void clear_user(client_t* user, field_t* field)
 {
@@ -202,9 +233,10 @@ int main(){
 
 	new_pos = (int *)malloc(2*sizeof(int));
 	
-	init_user(field_status.user);
+	init_client(field_status.user);
 	init_field(field);
 	init_prize(field_status.prize);
+	init_client(field_status.bot);
 
 	for (int i = 0; i < 5; i++){
 		create_prize(field, field_status.prize);
@@ -247,6 +279,10 @@ int main(){
 						&field_status.user[idx], sizeof(field_status.user[idx]), 0,
 						(const struct sockaddr *) &client_addr, client_addr_size);
 		}
+		else if (msg_rcv.type == Connect_bots)
+		{
+			create_bots(field_status.bot, field, msg_rcv.n_bots);
+		}
 		else if(msg_rcv.type == Ball_movement && field_status.user[msg_rcv.idx].hp <= 0)
 		{
 			printf("Health_0\n");
@@ -261,8 +297,8 @@ int main(){
 			new_pos[0] = field_status.user[msg_rcv.idx].pos[0];
 			new_pos[1] = field_status.user[msg_rcv.idx].pos[1];
 			printf("Ball Movement\n");
-			get_new_pos(new_pos, msg_rcv.key);
-			update_pos(field, &field_status, new_pos, msg_rcv.idx);
+			get_new_pos(new_pos, msg_rcv.key[0]);
+			update_user_pos(field, &field_status, new_pos, msg_rcv.idx);
 			msg_send.type = Field_status;
 			msg_send.field_status = field_status;
 			nbytes = sendto(sock_fd,
@@ -273,6 +309,19 @@ int main(){
 		else if(msg_rcv.type == New_Prize)
 		{
 			create_prize(field, field_status.prize);
+		}
+		else if(msg_rcv.type == Bot_movement)
+		{
+			for(int i = 0; i < 10; i++){
+				if(field_status.bot[i].id == '*'){
+					new_pos[0] = field_status.bot[i].pos[0];
+					new_pos[1] = field_status.bot[i].pos[1];
+					printf("Ball Movement\n");
+					get_new_pos(new_pos, msg_rcv.key[i]);
+					update_bot_pos(field, &field_status, new_pos, i);
+				}
+				else break;
+			}
 		}
 		else if(msg_rcv.type == Disconnect)
 		{

@@ -132,7 +132,7 @@ int main(){
         key = wgetch(my_win);
         if (key == KEY_LEFT || key == KEY_RIGHT || key == KEY_UP || key == KEY_DOWN){
             msg_send.type = Ball_movement;
-            msg_send.key = key;
+            msg_send.key[0] = key;
             msg_send.id = personal_info.id;
             msg_send.idx = personal_info.idx;
 
@@ -169,6 +169,15 @@ int main(){
                     mvwprintw(message_win, i+1,1,"                     ");
                     wrefresh(message_win);
                 }
+                
+                if(prev_field_status.bot[i].id != '-'){
+                    draw_player(my_win, &prev_field_status.bot[i], 0);   
+                }
+                if (field_status.bot[i].id != '-')
+                {
+                    draw_player(my_win, &field_status.bot[i], 1);   
+                }
+                
                 //Se der bug é porque é como o de cima
                 if(field_status.prize[i].value != -1){      
                     draw_prize(my_win, &prev_field_status.prize[i], 0);
