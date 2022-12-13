@@ -6,7 +6,9 @@
 #define Ball_movement 3000
 #define Field_status 4000
 #define Health_0 5000
-#define Disconnect 6000
+#define New_Prize 6000
+#define Bots 7000
+#define Disconnect 8000
 
 
 
@@ -42,6 +44,8 @@ typedef struct field_status_t
     prize_t prize[10];
 }field_status_t;
 
+
+//Dont send user idx
 typedef struct message_s2c
 {
     int type;

@@ -99,7 +99,7 @@ void update_pos(field_t* field, field_status_t* field_status, int* new_pos, int 
 		field[field_status->user[idx].pos[0]*WINDOW_SIZE + field_status->user[idx].pos[1]].status = 0;
 		field[field_status->user[idx].pos[0]*WINDOW_SIZE + field_status->user[idx].pos[1]].idx = idx;
 	}
-	else if(field[new_pos[0]*WINDOW_SIZE + new_pos[1]].status == 0)
+	else if(field[new_pos[0]*WINDOW_SIZE + new_pos[1]].status == 0 && field_status->user[idx].id != field_status->user[field[new_pos[0]*WINDOW_SIZE + new_pos[1]].idx].id)
 	{
 		if (field_status->user[idx].hp < 10){
 			field_status->user[idx].hp++;
@@ -262,14 +262,17 @@ int main(){
 			new_pos[1] = field_status.user[msg_rcv.idx].pos[1];
 			printf("Ball Movement\n");
 			get_new_pos(new_pos, msg_rcv.key);
-			if(new_pos[0] != field_status.user[msg_rcv.idx].pos[0] || new_pos[1] != field_status.user[msg_rcv.idx].pos[1])
-				update_pos(field, &field_status, new_pos, msg_rcv.idx);
+			update_pos(field, &field_status, new_pos, msg_rcv.idx);
 			msg_send.type = Field_status;
 			msg_send.field_status = field_status;
 			nbytes = sendto(sock_fd,
 						&msg_send, sizeof(msg_send), 0,
 						(const struct sockaddr *) &client_addr, client_addr_size);
 
+		}
+		else if(msg_rcv.type == New_Prize)
+		{
+			create_prize(field, field_status.prize);
 		}
 		else if(msg_rcv.type == Disconnect)
 		{

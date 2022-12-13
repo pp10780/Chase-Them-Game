@@ -64,7 +64,7 @@ int main(){
 		perror("socket: ");
 		exit(-1);
 	}
-
+    //PERCEBER ISTO DO UNLINK E DO LINK
 	struct sockaddr_un local_client_addr;
 	local_client_addr.sun_family = AF_UNIX;
 	sprintf(local_client_addr.sun_path, "%s_%d", SOCK_ADDRESS, getpid());
@@ -81,7 +81,7 @@ int main(){
 
 	printf("Socket created \nReady to send\nReady to recieve\n");
 
-    char buffer[100];
+    char buffer[2];
     printf("Choose a letter: ");
     fgets(buffer, 2, stdin);
 
@@ -183,8 +183,7 @@ int main(){
             prev_field_status = field_status;
         }
         else if(msg_rcv.type == Health_0){
-            
-            //touchwin(message_win);
+
     mvwprintw(message_win, 1,1,
          "\t__  __   ____    __  __                 \n"
          "\t\\ \\/ /  / __ \\  / / / /           \n"
@@ -199,7 +198,7 @@ int main(){
          "\t              /_____/  /___/   /_____/   /_____/   \n"
          "\t                                                  \n");
          wrefresh(message_win);	
-            sleep(0.5);
+            sleep(2);
             break;
         }
 	}
@@ -220,7 +219,7 @@ int main(){
          "\t                     \\____/  |___/   /_____/   /_/ |_|   \n"
          "\t                                                        \n");
     wrefresh(message_win);	
-    sleep(0.5);
+    sleep(2);
     endwin();
 
 	
