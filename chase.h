@@ -19,8 +19,6 @@ typedef struct field_t
     int status;
     // player/bot/prize position on the struct
 	int idx;
-    // prize: 1 - 5
-	int prize;
 } field_t;
 
 typedef struct prize_t

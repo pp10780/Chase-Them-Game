@@ -105,7 +105,7 @@ void update_pos(field_t* field, field_status_t* field_status, int* new_pos, int 
 			field_status->user[idx].hp++;
 		}
 		field_status->user[field[new_pos[0]*WINDOW_SIZE + new_pos[1]].idx].hp--;
-		printf("HP LOSS: %d", field_status->user[field[new_pos[0]*WINDOW_SIZE + new_pos[1]].idx].hp);
+		printf("HP LOSS: %d\n", field_status->user[field[new_pos[0]*WINDOW_SIZE + new_pos[1]].idx].hp);
 		
 		if (field_status->user[field[new_pos[0]*WINDOW_SIZE + new_pos[1]].idx].hp == 0){
 			field[new_pos[0]*WINDOW_SIZE + new_pos[1]].status = -1;
@@ -113,12 +113,14 @@ void update_pos(field_t* field, field_status_t* field_status, int* new_pos, int 
 	}
 	else if(field[new_pos[0]*WINDOW_SIZE + new_pos[1]].status == 2)
 	{
-		field_status->user[idx].hp += field[new_pos[0] * WINDOW_SIZE + new_pos[1]].prize;
+		printf("HP GAINED: %d + %d\n", field_status->user[idx].hp, field_status->prize[field[new_pos[0] * WINDOW_SIZE + new_pos[1]].idx].value);
+		field_status->user[idx].hp += field_status->prize[field[new_pos[0] * WINDOW_SIZE + new_pos[1]].idx].value;
+		
 		if (field_status->user[idx].hp > 10){
 			field_status->user[idx].hp = 10;
 		}
 
-		printf("HP GAINED: %d", field_status->user[idx].hp);
+		printf("HP ACTUAL: %d \n", field_status->user[idx].hp);
 		
 		field_status->prize[field[new_pos[0]*WINDOW_SIZE + new_pos[1]].idx].value = -1;
 

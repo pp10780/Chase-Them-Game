@@ -40,7 +40,7 @@ void draw_player(WINDOW *win, client_t * player, int delete){
 void draw_prize(WINDOW *win, prize_t * prize, int delete){
     int ch;
     if(delete){
-        ch = prize->value;
+        ch = prize->value + '0';
     }else{
         ch = ' ';
     }
@@ -96,8 +96,8 @@ int main(){
 	wrefresh(my_win);
     keypad(my_win, true);
     /* creates a window and draws a border */
-    message_win = newwin(20, 100, WINDOW_SIZE, 0);
-    box(message_win, 0 , 0);	
+    message_win = newwin(50, 70, WINDOW_SIZE, 0);
+    //box(message_win, 0 , 0);	
 	wrefresh(message_win);
 
 
@@ -164,9 +164,7 @@ int main(){
                     draw_player(my_win, &field_status.user[i], 1);        
                 }
                 //Se der bug é porque é como o de cima
-                if(prev_field_status.prize[i].value != -1){      
-                    prev_field_status.prize[i].value += '0';
-                    field_status.prize[i].value += '0';
+                if(field_status.prize[i].value != -1){      
                     draw_prize(my_win, &prev_field_status.prize[i], 0);
                     draw_prize(my_win, &field_status.prize[i], 1);        
                 }
@@ -177,8 +175,8 @@ int main(){
         else if(msg_rcv.type == Health_0){
             
             //touchwin(message_win);
-    mvwprintw(message_win, 5,10,
-         "\t __  __                            \n"
+    mvwprintw(message_win, 1,1,
+         "\t__  __   ____    __  __                 \n"
          "\t\\ \\/ /  / __ \\  / / / /           \n"
          "\t \\  /  / / / / / / / /            \n"
          "\t / /  / /_/ / / /_/ /             \n"
@@ -191,15 +189,15 @@ int main(){
          "\t              /_____/  /___/   /_____/   /_____/   \n"
          "\t                                                  \n");
          wrefresh(message_win);	
-            sleep(2);
+            sleep(3);
             break;
         }
 	}
 
     //endwin();
     //touchwin(message_win);
-    mvwprintw(message_win, 5,10,
-         " ______    ___     __  ___    ______                   \n"
+    mvwprintw(message_win, 1,1,
+         "\t   ______    ___     __  ___    ______                   \n"
          "\t  / ____/   /   |   /  |/  /   / ____/                   \n"
          "\t / / __    / /| |  / /|_/ /   / __/                      \n"
          "\t/ /_/ /   / ___ | / /  / /   / /___                      \n"
@@ -212,7 +210,7 @@ int main(){
          "\t                     \\____/  |___/   /_____/   /_/ |_|   \n"
          "\t                                                        \n");
     wrefresh(message_win);	
-    sleep(2);
+    sleep(5);
     endwin();
 
 	
