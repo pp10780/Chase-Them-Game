@@ -11,18 +11,21 @@
 #define Bot_movement 7000
 #define Disconnect 8000
 
+#define N_Max_Players 10
+#define N_Max_Bots 10
+#define N_Max_Prizes 10
 
 
-typedef struct field_t
+typedef struct position_t
 {
     // status: -1 - empty; 
     //          0 - player; 
     //          1 - bot; 
     //          2 - prize
-    int status;
+    int occ_status;
     // player/bot/prize position on the struct
 	int idx;
-} field_t;
+} position_t;
 
 typedef struct prize_t
 {

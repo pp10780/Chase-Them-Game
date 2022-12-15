@@ -5,23 +5,10 @@
 #include <stdio.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <errno.h>
 
 
 #include "chase.h"
-
-WINDOW * message_win;
-
-
-typedef struct player_position_t{
-    int x, y;
-    char c;
-} player_position_t;
-
-void new_player (player_position_t * player, char c){
-    player->x = WINDOW_SIZE/2;
-    player->y = WINDOW_SIZE/2;
-    player->c = c;
-}
 
 void draw_player(WINDOW *win, client_t * player, int delete){
     int ch;
@@ -51,39 +38,107 @@ void draw_prize(WINDOW *win, prize_t * prize, int delete){
     wrefresh(win);
 }
 
-int main(){
+void init_prev_field(field_status_t* prev_field_status){
+    for (int i = 0; i < 10; i++){
+        prev_field_status->user[i].id = '-';
+        prev_field_status->bot[i].id = '-';
+        prev_field_status->prize[i].value = -1;
+    }
+}
 
-	char buff[100];
-	int nbytes;
+int main(int argc, char** argv){
+
+	int err;
     int key = -1;
+    message_c2s msg_send;
+    message_s2c msg_rcv;
+	client_t client;
+    client_t personal_info;
+    field_status_t field_status;
+    field_status_t prev_field_status;
+
+    if(argc != 2)
+    {
+        printf("Invalid input arguments\nFORMAT: ./{EXECUTABLE} /tmp/sock_16\n");
+        exit(EXIT_FAILURE);
+    }
 
 
 	printf("My pid is %d (no other proces has the same pid :)\n", getpid());
 	int sock_fd= socket(AF_UNIX, SOCK_DGRAM, 0);
 	if (sock_fd == -1){
-		perror("socket: ");
+		fprintf(stderr, "error: %s\n", strerror(errno));
 		exit(-1);
 	}
     //PERCEBER ISTO DO UNLINK E DO LINK
 	struct sockaddr_un local_client_addr;
 	local_client_addr.sun_family = AF_UNIX;
-	sprintf(local_client_addr.sun_path, "%s_%d", SOCK_ADDRESS, getpid());
+	sprintf(local_client_addr.sun_path, "%s_%d", argv[1], getpid());
 
 	printf("this process address is %s\n", local_client_addr.sun_path);
 	unlink(local_client_addr.sun_path);
-	int err = bind(sock_fd, (struct sockaddr *)&local_client_addr,
+    err = bind(sock_fd, (struct sockaddr *)&local_client_addr,
 							sizeof(local_client_addr));
 	if(err == -1) {
-		perror("bind");
+		fprintf(stderr, "error: %s\n", strerror(errno));
 		exit(-1);
 	}
 
 
 	printf("Socket created \nReady to send\nReady to recieve\n");
 
-    char buffer[2];
-    printf("Choose a letter: ");
-    fgets(buffer, 2, stdin);
+    struct sockaddr_un server_addr;
+	server_addr.sun_family = AF_UNIX;
+	strcpy(server_addr.sun_path, argv[1]);
+
+    // Connect
+    msg_send.type = Connect;
+    char buffer[100];
+    char c;
+    while(1)
+    {
+        
+        printf("Choose a letter: ");
+        fgets(buffer, 100, stdin);
+        msg_send.id = buffer[0];
+        if((msg_send.id < 'A' || msg_send.id > 'Z') && (msg_send.id < 'a' || msg_send.id > 'z'))
+        {
+            printf("Invalid letter chosen!\n");
+            continue;
+        }
+
+        err = sendto(sock_fd,
+	                    &msg_send, sizeof(msg_send), 0,
+	                    (const struct sockaddr *) &server_addr, sizeof(server_addr));                
+        if(err == -1)
+        {
+            fprintf(stderr, "error: %s\n", strerror(errno));            
+            exit(0);
+        }
+        
+	    err = recv(sock_fd, &client, sizeof(client), 0);
+        if(err == -1)
+        {
+            fprintf(stderr, "error: %s\n", strerror(errno));            
+            exit(0);
+        }
+
+
+        if(client.id == '-')
+            printf("Letter already exists!\n");
+        else if(client.id == '/')
+        {
+            printf("Server is full! Try again later...\n");
+            exit(0);
+        }   
+        else
+            break;
+
+        sleep(0.5);
+
+    }
+	
+	personal_info = client;
 
 	initscr();		    	/* Start curses mode 		*/
 	cbreak();				/* Line buffering disabled	*/
@@ -96,38 +151,16 @@ int main(){
 	wrefresh(my_win);
     keypad(my_win, true);
     /* creates a window and draws a border */
-    message_win = newwin(50, 70, WINDOW_SIZE, 0);
+    WINDOW * message_win = newwin(20, 70, WINDOW_SIZE, 0);
     //box(message_win, 0 , 0);	
 	wrefresh(message_win);
 
-
-    message_c2s msg_send;
-    message_s2c msg_rcv;
-	client_t client;
-    client_t personal_info;
-    field_status_t field_status;
-    field_status_t prev_field_status;
-
-	struct sockaddr_un server_addr;
-	server_addr.sun_family = AF_UNIX;
-	strcpy(server_addr.sun_path, SOCK_ADDRESS);
-
-    // Connect
-    msg_send.type = Connect;
-	msg_send.id = buffer[0];
-    nbytes = sendto(sock_fd,
-	                    &msg_send, sizeof(msg_send), 0,
-	                    (const struct sockaddr *) &server_addr, sizeof(server_addr));
-
-	nbytes = recv(sock_fd, &client, sizeof(client), 0);
-
-	personal_info = client;
-    
     draw_player(my_win, &personal_info, 1);
 
+    init_prev_field(&prev_field_status);
     //POTENCIAL FONTE DE BUGS
     prev_field_status.user[personal_info.idx] = personal_info;
-
+    
 	while(1){
         key = wgetch(my_win);
         if (key == KEY_LEFT || key == KEY_RIGHT || key == KEY_UP || key == KEY_DOWN){
@@ -136,21 +169,37 @@ int main(){
             msg_send.id = personal_info.id;
             msg_send.idx = personal_info.idx;
 
-            nbytes = sendto(sock_fd,
+            err = sendto(sock_fd,
 	                    &msg_send, sizeof(msg_send), 0,
 	                    (const struct sockaddr *) &server_addr, sizeof(server_addr));
+            if(err == -1)
+            {
+                fprintf(stderr, "error: %s\n", strerror(errno));            
+                exit(0);
+            }
+            
         }
         else if(key == 'q')
         {
             msg_send.type = Disconnect;
             msg_send.idx = personal_info.idx;
-            nbytes = sendto(sock_fd,
+            err = sendto(sock_fd,
 	                    &msg_send, sizeof(msg_send), 0,
 	                    (const struct sockaddr *) &server_addr, sizeof(server_addr));
+            if(err == -1)
+            {
+                fprintf(stderr, "error: %s\n", strerror(errno));            
+                exit(0);
+            }
             break;
         }
 		
-		nbytes = recv(sock_fd, &msg_rcv, sizeof(msg_rcv), 0);
+		err = recv(sock_fd, &msg_rcv, sizeof(msg_rcv), 0);
+        if(err == -1)
+        {
+            fprintf(stderr, "error: %s\n", strerror(errno));            
+            exit(0);
+        }
         if(msg_rcv.type == Field_status){
         
             field_status = msg_rcv.field_status;
@@ -161,13 +210,11 @@ int main(){
                 }
                 if(field_status.user[i].id != '-' && field_status.user[i].hp > 0){      
                     draw_player(my_win, &field_status.user[i], 1); 
-                    mvwprintw(message_win, i+1,1,"Player: %c : HP: %d\n", field_status.user[i].id, field_status.user[i].hp);
-                    wrefresh(message_win);       
+                    mvwprintw(message_win, i+1,1,"Player: %c : HP: %d\n", field_status.user[i].id, field_status.user[i].hp);       
                 }
                 if(field_status.user[i].id != '-' && field_status.user[i].hp == 0)
                 {
                     mvwprintw(message_win, i+1,1,"                     ");
-                    wrefresh(message_win);
                 }
                 
                 if(prev_field_status.bot[i].id != '-'){
@@ -183,10 +230,13 @@ int main(){
                     draw_prize(my_win, &prev_field_status.prize[i], 0);
                     draw_prize(my_win, &field_status.prize[i], 1);        
                 }
-                box(my_win, 0 , 0);
-                wrefresh(my_win);
+
                 
             }
+            box(my_win, 0 , 0);
+            wrefresh(my_win);
+            box(message_win, 0, 0);
+            wrefresh(message_win);
 
 
             prev_field_status = field_status;
@@ -194,18 +244,18 @@ int main(){
         else if(msg_rcv.type == Health_0){
 
     mvwprintw(message_win, 1,1,
-         "\t__  __   ____    __  __                 \n"
-         "\t\\ \\/ /  / __ \\  / / / /           \n"
-         "\t \\  /  / / / / / / / /            \n"
-         "\t / /  / /_/ / / /_/ /             \n"
-         "\t/_/   \\____/  \\____/              \n"
-         "\t                                 \n"
-         "\t                  ____     ____    ______    ____ \n"
+         "\t__  __   ____    __  __                              \n"
+         "\t\\ \\/ /  / __ \\  / / / /                           \n"
+         "\t \\  /  / / / / / / / /                              \n"
+         "\t / /  / /_/ / / /_/ /                                \n"
+         "\t/_/   \\____/  \\____/                               \n"
+         "\t                                                     \n"
+         "\t                  ____     ____    ______    ____    \n"
          "\t                 / __ \\   /  _/   / ____/   / __ \\ \n"
-         "\t                / / / /   / /    / __/     / / / / \n"
-         "\t               / /_/ /  _/ /    / /___    / /_/ /  \n"
-         "\t              /_____/  /___/   /_____/   /_____/   \n"
-         "\t                                                  \n");
+         "\t                / / / /   / /    / __/     / / / /   \n"
+         "\t               / /_/ /  _/ /    / /___    / /_/ /    \n"
+         "\t              /_____/  /___/   /_____/   /_____/     \n"
+         "\t                                                     \n");
          wrefresh(message_win);	
             sleep(2);
             break;
@@ -215,17 +265,17 @@ int main(){
     //endwin();
     //touchwin(message_win);
     mvwprintw(message_win, 1,1,
-         "\t   ______    ___     __  ___    ______                   \n"
-         "\t  / ____/   /   |   /  |/  /   / ____/                   \n"
-         "\t / / __    / /| |  / /|_/ /   / __/                      \n"
-         "\t/ /_/ /   / ___ | / /  / /   / /___                      \n"
-         "\t\\____/   /_/  |_|/_/  /_/   /_____/                      \n"
-         "\t                                                         \n"
-         "\t                        ____  _    __    ______    ____  \n"
+         "\t   ______    ___     __  ___    ______                     \n"
+         "\t  / ____/   /   |   /  |/  /   / ____/                     \n"
+         "\t / / __    / /| |  / /|_/ /   / __/                        \n"
+         "\t/ /_/ /   / ___ | / /  / /   / /___                        \n"
+         "\t\\____/   /_/  |_|/_/  /_/   /_____/                       \n"
+         "\t                                                           \n"
+         "\t                        ____  _    __    ______    ____    \n"
          "\t                       / __ \\| |  / /   / ____/   / __ \\ \n"
-         "\t                      / / / /| | / /   / __/     / /_/ / \n"
-         "\t                     / /_/ / | |/ /   / /___    / _, _/  \n"
-         "\t                     \\____/  |___/   /_____/   /_/ |_|   \n"
+         "\t                      / / / /| | / /   / __/     / /_/ /   \n"
+         "\t                     / /_/ / | |/ /   / /___    / _, _/    \n"
+         "\t                     \\____/  |___/   /_____/   /_/ |_|    \n"
          "\t                                                        \n");
     wrefresh(message_win);	
     sleep(2);
