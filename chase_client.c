@@ -7,9 +7,19 @@
 #include <unistd.h>
 #include <errno.h>
 
+#include "structs.h"
+#include "defines.h"
 
-#include "chase.h"
-
+/******************************************************************************
+ * draw_player()
+ *
+ * Arguments: win - window display for the map
+              player - struct with player information
+              delete - flag that indicate if it is to draw or delete  
+ * Returns: 
+ *
+ * Description: Draws/deletes a player on the display window 
+ *****************************************************************************/
 void draw_player(WINDOW *win, client_t * player, int delete){
     int ch;
     if(delete){
@@ -24,6 +34,16 @@ void draw_player(WINDOW *win, client_t * player, int delete){
     wrefresh(win);
 }
 
+/******************************************************************************
+ * draw_prize()
+ *
+ * Arguments: win - window display for the map
+              prize - struct with prize information
+              delete - flag that indicate if it is to draw or delete  
+ * Returns: 
+ *
+ * Description: Draws/deletes a prize on the display window 
+ *****************************************************************************/
 void draw_prize(WINDOW *win, prize_t * prize, int delete){
     int ch;
     if(delete){
@@ -38,6 +58,15 @@ void draw_prize(WINDOW *win, prize_t * prize, int delete){
     wrefresh(win);
 }
 
+/******************************************************************************
+ * init_prev_field()
+ *
+ * Arguments: prev_field_status - struct with previous iteration field 
+ *                                information  
+ * Returns: 
+ *
+ * Description: Initializes previous filed status values 
+ *****************************************************************************/
 void init_prev_field(field_status_t* prev_field_status){
     for (int i = 0; i < 10; i++){
         prev_field_status->user[i].id = '-';
@@ -57,6 +86,7 @@ int main(int argc, char** argv){
     field_status_t field_status;
     field_status_t prev_field_status;
 
+    //check if program was lauched using the right number of arguments
     if(argc != 2)
     {
         printf("Invalid input arguments\nFORMAT: ./{EXECUTABLE} /tmp/sock_16\n");
@@ -65,12 +95,12 @@ int main(int argc, char** argv){
 
 
 	printf("My pid is %d (no other proces has the same pid :)\n", getpid());
+    //open socket for communication
 	int sock_fd= socket(AF_UNIX, SOCK_DGRAM, 0);
 	if (sock_fd == -1){
 		fprintf(stderr, "error: %s\n", strerror(errno));
 		exit(-1);
 	}
-    //PERCEBER ISTO DO UNLINK E DO LINK
 	struct sockaddr_un local_client_addr;
 	local_client_addr.sun_family = AF_UNIX;
 	sprintf(local_client_addr.sun_path, "%s_%d", argv[1], getpid());
@@ -101,6 +131,7 @@ int main(int argc, char** argv){
         printf("Choose a letter: ");
         fgets(buffer, 100, stdin);
         msg_send.id = buffer[0];
+        //validate that the id inserted is a letter
         if((msg_send.id < 'A' || msg_send.id > 'Z') && (msg_send.id < 'a' || msg_send.id > 'z'))
         {
             printf("Invalid letter chosen!\n");
@@ -123,14 +154,17 @@ int main(int argc, char** argv){
             exit(0);
         }
 
-
+        //server response indicates that client id alredy exists 
         if(client.id == '-')
             printf("Letter already exists!\n");
+
+        //server response indicates that server is already full
         else if(client.id == '/')
         {
             printf("Server is full! Try again later...\n");
             exit(0);
         }   
+        //valid id and connection completed
         else
             break;
 
@@ -138,6 +172,7 @@ int main(int argc, char** argv){
 
     }
 	
+    //store personal info recieved from the server
 	personal_info = client;
 
 	initscr();		    	/* Start curses mode 		*/
@@ -152,17 +187,18 @@ int main(int argc, char** argv){
     keypad(my_win, true);
     /* creates a window and draws a border */
     WINDOW * message_win = newwin(20, 70, WINDOW_SIZE, 0);
-    //box(message_win, 0 , 0);	
 	wrefresh(message_win);
 
     draw_player(my_win, &personal_info, 1);
 
+    //init previous field status
     init_prev_field(&prev_field_status);
-    //POTENCIAL FONTE DE BUGS
     prev_field_status.user[personal_info.idx] = personal_info;
     
 	while(1){
+        //get key input from user
         key = wgetch(my_win);
+        //if the input is a directional key send a ball movement message
         if (key == KEY_LEFT || key == KEY_RIGHT || key == KEY_UP || key == KEY_DOWN){
             msg_send.type = Ball_movement;
             msg_send.key[0] = key;
@@ -179,6 +215,7 @@ int main(int argc, char** argv){
             }
             
         }
+        //if the input is the q key send a disconnect message
         else if(key == 'q')
         {
             msg_send.type = Disconnect;
@@ -200,32 +237,37 @@ int main(int argc, char** argv){
             fprintf(stderr, "error: %s\n", strerror(errno));            
             exit(0);
         }
+        //if message recived is a field status update the window 
         if(msg_rcv.type == Field_status){
         
             field_status = msg_rcv.field_status;
             for(int i = 0; i < 10; i++)
             {
+                //delete previous players postions from main window
                 if(prev_field_status.user[i].id != '-' && prev_field_status.user[i].hp > 0){      
                     draw_player(my_win, &prev_field_status.user[i], 0);        
                 }
+                //draw current player positions on the main window and players healths on message window
                 if(field_status.user[i].id != '-' && field_status.user[i].hp > 0){      
                     draw_player(my_win, &field_status.user[i], 1); 
                     mvwprintw(message_win, i+1,1,"Player: %c : HP: %d\n", field_status.user[i].id, field_status.user[i].hp);       
                 }
+                //delete dead players healths from message window
                 if(field_status.user[i].id != '-' && field_status.user[i].hp == 0)
                 {
                     mvwprintw(message_win, i+1,1,"                     ");
                 }
-                
+                //delete previous bot position from main window
                 if(prev_field_status.bot[i].id != '-'){
                     draw_player(my_win, &prev_field_status.bot[i], 0);   
                 }
+                //draw current bot positions on the main window
                 if (field_status.bot[i].id != '-')
                 {
                     draw_player(my_win, &field_status.bot[i], 1);   
                 }
-                
-                //Se der bug é porque é como o de cima
+
+                //delete previous prize positions and draw current ones on the main window
                 if(field_status.prize[i].value != -1){      
                     draw_prize(my_win, &prev_field_status.prize[i], 0);
                     draw_prize(my_win, &field_status.prize[i], 1);        
@@ -235,12 +277,12 @@ int main(int argc, char** argv){
             }
             box(my_win, 0 , 0);
             wrefresh(my_win);
-            box(message_win, 0, 0);
             wrefresh(message_win);
 
 
             prev_field_status = field_status;
         }
+        //if health_0 message recieved print you died on message window
         else if(msg_rcv.type == Health_0){
 
     mvwprintw(message_win, 1,1,
@@ -264,6 +306,7 @@ int main(int argc, char** argv){
 
     //endwin();
     //touchwin(message_win);
+    //if player died or disconncted print game over on message window and disconnect
     mvwprintw(message_win, 1,1,
          "\t   ______    ___     __  ___    ______                     \n"
          "\t  / ____/   /   |   /  |/  /   / ____/                     \n"
@@ -281,46 +324,6 @@ int main(int argc, char** argv){
     sleep(2);
     endwin();
 
-	
     close(sock_fd);
 	exit(0);
 }
-
-// player_position_t p1;
-
-// int main(){
-// 	initscr();		    	/* Start curses mode 		*/
-// 	cbreak();				/* Line buffering disabled	*/
-//     keypad(stdscr, TRUE);   /* We get F1, F2 etc..		*/
-// 	noecho();			    /* Don't echo() while we do getch */
-
-//     /* creates a window and draws a border */
-//     WINDOW * my_win = newwin(WINDOW_SIZE, WINDOW_SIZE, 0, 0);
-//     box(my_win, 0 , 0);	
-// 	wrefresh(my_win);
-//     keypad(my_win, true);
-//     /* creates a window and draws a border */
-//     message_win = newwin(5, WINDOW_SIZE, WINDOW_SIZE, 0);
-//     box(message_win, 0 , 0);	
-// 	wrefresh(message_win);
-
-
-//     new_player(&p1, 'y');
-//     draw_player(my_win, &p1, true);
-
-//     int key = -1;
-//     while(key != 27 && key!= 'q'){
-//         key = wgetch(my_win);		
-//         if (key == KEY_LEFT || key == KEY_RIGHT || key == KEY_UP || key == KEY_DOWN){
-//             draw_player(my_win, &p1, false);
-//             moove_player (&p1, key);
-//             draw_player(my_win, &p1, true);
-
-//         }
-
-//         mvwprintw(message_win, 1,1,"%c key pressed", key);
-//         wrefresh(message_win);	
-//     }
-
-//     exit(0);
-// }

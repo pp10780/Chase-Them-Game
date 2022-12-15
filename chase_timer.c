@@ -7,9 +7,8 @@
 #include <unistd.h>
 #include <errno.h>
 
-
-
-#include "chase.h"
+#include "defines.h"
+#include "structs.h"
 
 
 int main()

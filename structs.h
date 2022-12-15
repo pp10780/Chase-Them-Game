@@ -1,21 +1,5 @@
-#define WINDOW_SIZE 20
-#define SOCK_ADDRESS "/tmp/sock_16"
-
-#define Connect 1000
-#define Connect_bots 1500
-#define Ball_information 2000
-#define Ball_movement 3000
-#define Field_status 4000
-#define Health_0 5000
-#define New_Prize 6000
-#define Bot_movement 7000
-#define Disconnect 8000
-
-#define N_Max_Players 10
-#define N_Max_Bots 10
-#define N_Max_Prizes 10
-
-
+#ifndef STRUCT_H
+#define STRUCT_H
 typedef struct position_t
 {
     // status: -1 - empty; 
@@ -64,3 +48,5 @@ typedef struct message_c2s
     char id;
     int key[10];
 } message_c2s;
+
+#endif
