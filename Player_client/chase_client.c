@@ -7,8 +7,8 @@
 #include <unistd.h>
 #include <errno.h>
 
-#include "structs.h"
-#include "defines.h"
+#include "../common/defines.h"
+#include "../common/structs.h"
 
 /******************************************************************************
  * draw_player()
@@ -93,8 +93,6 @@ int main(int argc, char** argv){
         exit(EXIT_FAILURE);
     }
 
-
-	printf("My pid is %d (no other proces has the same pid :)\n", getpid());
     //open socket for communication
 	int sock_fd= socket(AF_UNIX, SOCK_DGRAM, 0);
 	if (sock_fd == -1){
@@ -105,7 +103,6 @@ int main(int argc, char** argv){
 	local_client_addr.sun_family = AF_UNIX;
 	sprintf(local_client_addr.sun_path, "%s_%d", argv[1], getpid());
 
-	printf("this process address is %s\n", local_client_addr.sun_path);
 	unlink(local_client_addr.sun_path);
     err = bind(sock_fd, (struct sockaddr *)&local_client_addr,
 							sizeof(local_client_addr));
@@ -114,9 +111,6 @@ int main(int argc, char** argv){
 		exit(-1);
 	}
 
-
-	printf("Socket created \nReady to send\nReady to recieve\n");
-
     struct sockaddr_un server_addr;
 	server_addr.sun_family = AF_UNIX;
 	strcpy(server_addr.sun_path, argv[1]);
@@ -124,7 +118,7 @@ int main(int argc, char** argv){
     // Connect
     msg_send.type = Connect;
     char buffer[100];
-    char c;
+
     while(1)
     {
         
@@ -210,7 +204,8 @@ int main(int argc, char** argv){
 	                    (const struct sockaddr *) &server_addr, sizeof(server_addr));
             if(err == -1)
             {
-                fprintf(stderr, "error: %s\n", strerror(errno));            
+                endwin();  
+                fprintf(stderr, "error: %s\n", strerror(errno));          
                 exit(0);
             }
             
@@ -225,7 +220,8 @@ int main(int argc, char** argv){
 	                    (const struct sockaddr *) &server_addr, sizeof(server_addr));
             if(err == -1)
             {
-                fprintf(stderr, "error: %s\n", strerror(errno));            
+                endwin();  
+                fprintf(stderr, "error: %s\n", strerror(errno));           
                 exit(0);
             }
             break;
@@ -234,7 +230,8 @@ int main(int argc, char** argv){
 		err = recv(sock_fd, &msg_rcv, sizeof(msg_rcv), 0);
         if(err == -1)
         {
-            fprintf(stderr, "error: %s\n", strerror(errno));            
+            endwin();  
+            fprintf(stderr, "error: %s\n", strerror(errno));    
             exit(0);
         }
         //if message recived is a field status update the window 

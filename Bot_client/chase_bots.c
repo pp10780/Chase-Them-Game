@@ -8,8 +8,8 @@
 #include <time.h>
 #include <errno.h>
 
-#include "defines.h"
-#include "structs.h"
+#include "../common/defines.h"
+#include "../common/structs.h"
 
 /******************************************************************************
  * random_key()
@@ -33,7 +33,6 @@ int main(int argc, char** argv){
 
     int n_bots;
     int err;
-    time_t start;
 
     //check if program was lauched using the right number of arguments
     if(argc != 3)
@@ -50,7 +49,6 @@ int main(int argc, char** argv){
         exit(EXIT_FAILURE);
     }
 
-    printf("My pid is %d (no other proces has the same pid :)\n", getpid());
     //open socket for communication
 	int sock_fd= socket(AF_UNIX, SOCK_DGRAM, 0);
 	if (sock_fd == -1){
@@ -62,7 +60,6 @@ int main(int argc, char** argv){
 	local_client_addr.sun_family = AF_UNIX;
 	sprintf(local_client_addr.sun_path, "%s_%d", argv[2], getpid());
 
-	printf("this process address is %s\n", local_client_addr.sun_path);
 	unlink(local_client_addr.sun_path);
 	err = bind(sock_fd, (struct sockaddr *)&local_client_addr,
 							sizeof(local_client_addr));
@@ -70,8 +67,6 @@ int main(int argc, char** argv){
 		perror("bind");
 		exit(-1);
 	}
-
-    printf("Socket created \nReady to send\nReady to recieve\n");
 
     struct sockaddr_un server_addr;
 	server_addr.sun_family = AF_UNIX;
@@ -93,38 +88,23 @@ int main(int argc, char** argv){
         exit(0);
     }
 
-
     msg_send.type = Bot_movement;
 
-    //Generate keys for first movement
-    for(int i = 0; i < n_bots; i++)
-    {
-        msg_send.key[i] = random_key(i);
-        printf("%d\n",msg_send.key[i]);
-    }
-    //starts timer
-    start = time(NULL);
     while(1)
-    {   
-        //generate and send new keys for movement to the server every 3 seconds
-        if(time(NULL) - start >= 3)
+    {
+        sleep(3);
+        for(int i = 0; i < n_bots; i++)
         {
-            
-            err = sendto(sock_fd,
-	                    &msg_send, sizeof(msg_send), 0,
-	                    (const struct sockaddr *) &server_addr, sizeof(server_addr));
-            if(err == -1)
-            {
-                fprintf(stderr, "error: %s\n", strerror(errno));            
-                exit(0);
-            }
-            start = time(NULL);
-            for(int i = 0; i < n_bots; i++)
-            {
-                msg_send.key[i] = random_key(i);
-                printf("%d\n",msg_send.key[i]);
-            }
+            msg_send.key[i] = random_key(i);
+            printf("%d\n",msg_send.key[i]);
         }
-        
+        err = sendto(sock_fd,
+                    &msg_send, sizeof(msg_send), 0,
+                    (const struct sockaddr *) &server_addr, sizeof(server_addr));
+        if(err == -1)
+        {
+            fprintf(stderr, "error: %s\n", strerror(errno));            
+            exit(0);
+        }
     }
 }

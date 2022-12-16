@@ -2,8 +2,8 @@
 #define UTILS_H
 #include <time.h>
 #include <stdlib.h>
-#include "defines.h"
-#include "structs.h"
+#include "../common/defines.h"
+#include "../common/structs.h"
 
 void generate_valid_pos(position_t* map, int* pos);
 void get_new_pos(int* pos, int key);

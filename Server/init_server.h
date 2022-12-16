@@ -11,8 +11,8 @@
 #include <time.h>
 #include <ncurses.h>
 
-#include "defines.h"
-#include "structs.h"
+#include "../common/defines.h"
+#include "../common/structs.h"
 #include "utils_server.h"
 
 void init_server(field_status_t* field_status, position_t* map);

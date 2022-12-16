@@ -1,7 +1,7 @@
 #ifndef MOVEMENT_H
 #define MOVEMENT_H
-#include "defines.h"
-#include "structs.h"
+#include "../common/defines.h"
+#include "../common/structs.h"
 #include <stdio.h>
 #include "utils_server.h"
 

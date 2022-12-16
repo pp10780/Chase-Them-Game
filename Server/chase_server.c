@@ -34,9 +34,6 @@ int main(){
 		exit(-1);
 	}
 
-	printf("Socket created and binded\n");
-	printf("Ready to receive messages\n");
-	
 	struct sockaddr_un client_addr;
 	socklen_t client_addr_size = sizeof(struct sockaddr_un);
 	
@@ -94,10 +91,7 @@ int main(){
 						exit(0);
 					}
 				}
-			}
-				
-	
-			
+			}	
 		}
 		else if (msg_rcv.type == Connect_bots)
 		{	
@@ -167,7 +161,7 @@ int main(){
 		}
 		else
 		{
-			printf("TRASH MESSAGE\n");
+			printf("Invalid message received\n");
 		}
 	}
 
